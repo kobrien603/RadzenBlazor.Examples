@@ -60,6 +60,27 @@
                         <RadzenNumeric TValue="int" Name="points" @bind-Value="@points" @bind-Value:after="OnPointsChanged"
                                        Min="3" Max="12" Step="1" Style="width: 6rem;" />
                     </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenSwitch @bind-Value="@autoStep" @bind-Value:after="OnChanged" Name="autostep" />
+                        <RadzenLabel Text="Auto-set steps" Component="autostep" />
+                    </RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenLabel Text="Target intervals" Component="intervals" />
+                        <RadzenNumeric TValue="int" Name="intervals" @bind-Value="@targetIntervals" @bind-Value:after="OnChanged"
+                                       Min="1" Max="20" Step="1" Style="width: 6rem;" />
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                        @if (autoStep)
+                        {
+                            <text>Steps are locked to (Max − Min) / target on both axes, so they always line up.</text>
+                        }
+                        else
+                        {
+                            <text>Steps are manual — each axis shows the step that would line up at the target.</text>
+                        }
+                    </RadzenText>
+
                     <RadzenButton Text="Randomize both" Icon="casino"
                                   Disabled="@(!BothValid)" Click="@RandomizeBoth" />
 
@@ -114,6 +135,12 @@
     private bool showRightGrid = true;
     private int seed = 1;
 
+    // Auto-step: when on, each axis's Step is derived from a shared target interval count
+    // (Step = (Max - Min) / target), so both axes always have the same number of intervals
+    // and therefore line up. When off, the user sets each Step and we show the value that would.
+    private bool autoStep = false;
+    private int targetIntervals = 4;
+
     private RadzenChart? chart;
     private List<ChartPoint> leftData = new();
     private List<ChartPoint> rightData = new();
@@ -133,15 +160,34 @@
 
     protected override void OnInitialized()
     {
+        RecomputeAutoSteps();
         leftData = GenerateTrace(lMin, lMax, seed * 2);
         rightData = GenerateTrace(rMin, rMax, seed * 2 + 1);
     }
 
     private async Task OnChanged()
     {
+        RecomputeAutoSteps();
         if (chart is not null)
             await chart.Reload();
     }
+
+    // When auto-step is on, force each step to the value that yields exactly `targetIntervals`
+    // intervals. No-op when off, so manually-set steps are preserved.
+    private void RecomputeAutoSteps()
+    {
+        if (!autoStep || targetIntervals <= 0)
+            return;
+        if (lMax > lMin) lStep = (lMax - lMin) / targetIntervals;
+        if (rMax > rMin) rStep = (rMax - rMin) / targetIntervals;
+    }
+
+    // The step an axis would need to line up at `targetIntervals` intervals, or null if undefined.
+    private double? SuggestedStepValue(double min, double max)
+        => (targetIntervals > 0 && max > min) ? (max - min) / targetIntervals : null;
+
+    private string SuggestedStepText(double min, double max)
+        => SuggestedStepValue(min, max) is double s ? s.ToString("0.####") : "—";
 
     private async Task OnPointsChanged()
     {
@@ -216,22 +262,47 @@
         Func<double> getMax, Action<double> setMax,
         Func<double> getStep, Action<double> setStep) => __builder =>
     {
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" Wrap="FlexWrap.Wrap">
-            <RadzenStack Gap="0.25rem">
-                <RadzenLabel Text="Min" />
-                <RadzenNumeric TValue="double" Value="@getMin()" Step="10" Style="width: 7rem;"
-                               ValueChanged="@(async v => { setMin(v); await OnChanged(); })" />
+        <RadzenStack Gap="0.4rem">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+                <RadzenStack Gap="0.25rem">
+                    <RadzenLabel Text="Min" />
+                    <RadzenNumeric TValue="double" Value="@getMin()" Step="10" Style="width: 7rem;"
+                                   ValueChanged="@(async v => { setMin(v); await OnChanged(); })" />
+                </RadzenStack>
+                <RadzenStack Gap="0.25rem">
+                    <RadzenLabel Text="Max" />
+                    <RadzenNumeric TValue="double" Value="@getMax()" Step="10" Style="width: 7rem;"
+                                   ValueChanged="@(async v => { setMax(v); await OnChanged(); })" />
+                </RadzenStack>
+                <RadzenStack Gap="0.25rem">
+                    <RadzenLabel Text="Step" />
+                    <RadzenNumeric TValue="double" Value="@getStep()" Step="1" Style="width: 7rem;"
+                                   Disabled="@autoStep"
+                                   ValueChanged="@(async v => { setStep(v); await OnChanged(); })" />
+                </RadzenStack>
             </RadzenStack>
-            <RadzenStack Gap="0.25rem">
-                <RadzenLabel Text="Max" />
-                <RadzenNumeric TValue="double" Value="@getMax()" Step="10" Style="width: 7rem;"
-                               ValueChanged="@(async v => { setMax(v); await OnChanged(); })" />
-            </RadzenStack>
-            <RadzenStack Gap="0.25rem">
-                <RadzenLabel Text="Step" />
-                <RadzenNumeric TValue="double" Value="@getStep()" Step="1" Style="width: 7rem;"
-                               ValueChanged="@(async v => { setStep(v); await OnChanged(); })" />
-            </RadzenStack>
+
+            @if (autoStep)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                    Auto: step = (Max − Min) / @targetIntervals = <strong>@SuggestedStepText(getMin(), getMax())</strong>
+                </RadzenText>
+            }
+            else
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                        To line up at @targetIntervals intervals, step should be
+                        <strong>@SuggestedStepText(getMin(), getMax())</strong>
+                    </RadzenText>
+                    @if (SuggestedStepValue(getMin(), getMax()) is double s)
+                    {
+                        <RadzenButton Text="Apply" Icon="auto_fix_high" ButtonStyle="ButtonStyle.Light"
+                                      Variant="Variant.Flat" Size="ButtonSize.ExtraSmall"
+                                      Click="@(async () => { setStep(s); await OnChanged(); })" />
+                    }
+                </RadzenStack>
+            }
         </RadzenStack>
     };
 }
