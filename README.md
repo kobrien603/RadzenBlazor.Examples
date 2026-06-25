@@ -12,8 +12,10 @@ components — focused on the **Charts** and the newly released **`RadzenSpreads
 | **Home** (`/`) | — | Live badge showing the current render mode (Static → Server → WebAssembly) |
 | **Charts** (`/charts`) | `RadzenChart` | Switch between line / area / column / bar / pie / donut, toggle smooth & markers, randomize data |
 | **Spreadsheet** (`/spreadsheet`) | `RadzenSpreadsheet` | Excel-compatible grid with a live formula engine (`=SUM`, `=B5*C1`) and `.xlsx` / `.csv` import & export |
+| **Dual-axis tester** (`/dual-axis-tester`) | `RadzenChart` (v11 multi-axis) | Two value axes (left + right); a green/red badge tells you whether their ticks line up, with auto-set steps or manual + "what it should be" hints |
 
-Theme: **Material Dark**. Radzen.Blazor **11.0.4**.
+A header **light/dark toggle** (`RadzenAppearanceToggle`) switches between Material and Material
+Dark and is remembered across reloads. Radzen.Blazor **11.0.4**, .NET 10.
 
 ## Render modes
 
@@ -26,14 +28,25 @@ modes during a single load:
 
 The badge on the home page reflects the active mode in real time.
 
+## Theming
+
+The light/dark choice is managed by Radzen's `ThemeService` and persisted with
+`AddRadzenCookieThemeService()` (registered in both projects). Instead of a hardcoded
+stylesheet, an interactive `<RadzenTheme>` renders the theme so the toggle can swap it at
+runtime — in `App.razor` for the hosted app and in `StandaloneRoot.razor` for the standalone
+WASM build. On the hosted app the cookie is read during prerender, so there is no theme flash
+on first paint.
+
 ## Project layout
 
 ```
 RadzenBlazor.Examples/          # Server host project (InteractiveAuto)
 RadzenBlazor.Examples.Client/   # WebAssembly project — all demo pages, layout and nav live here
-  Pages/                        # Home, Charts, Spreadsheet
-  Layout/                       # MainLayout + NavMenu (shared by host and standalone builds)
-  StandaloneRoot.razor          # Router used only for the standalone WASM (GitHub Pages) build
+  Pages/                        # Home, Charts, Spreadsheet, DualAxisTesterPage
+  Components/                   # DualAxisTester (reusable dual-axis chart + controls)
+  Charts/AxisAlignment.cs       # Pure, testable tick-alignment math
+  Layout/                       # MainLayout (header theme toggle) + NavMenu
+  StandaloneRoot.razor          # Root used only for the standalone WASM (GitHub Pages) build
 .github/workflows/deploy.yml    # Publishes the WASM build to GitHub Pages
 ```
 
