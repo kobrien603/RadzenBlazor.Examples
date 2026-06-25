@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Radzen Blazor Examples</title>
     <base href="/" />
-    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-dark-base.css" />
+    <!-- The Radzen theme stylesheet is injected at runtime by <RadzenTheme> (see StandaloneRoot.razor)
+         so the light/dark toggle can swap it. The dark loading splash below avoids a flash meanwhile. -->
     <style>
         html, body { margin: 0; height: 100%; }
         #app-loading {

@@ -10,6 +10,9 @@ builder.Services.AddRazorComponents()
 
 // Radzen services (dialog, notification, tooltip, context menu) for server prerender.
 builder.Services.AddRadzenComponents();
+// Persist the selected light/dark theme in a cookie so it survives reloads and is read
+// during server prerender (no theme flash on first paint).
+builder.Services.AddRadzenCookieThemeService();
 
 var app = builder.Build();
 

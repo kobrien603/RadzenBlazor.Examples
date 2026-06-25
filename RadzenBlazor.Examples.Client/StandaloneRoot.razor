@@ -2,6 +2,11 @@
    (for static hosting on GitHub Pages). In the hosted InteractiveAuto app the server
    provides the root component instead — see RadzenBlazor.Examples/Components/Routes.razor. *@
 
+@* The standalone WASM host page (wwwroot/index.html) carries no theme stylesheet, so
+   RadzenTheme renders and manages it here — driven by the same cookie ThemeService as the
+   hosted app, so the light/dark choice persists. *@
+<RadzenTheme Theme="material-dark" />
+
 <Router AppAssembly="@typeof(StandaloneRoot).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />

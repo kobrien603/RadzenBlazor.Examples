@@ -5,6 +5,8 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 // Radzen services (dialog, notification, tooltip, context menu).
 builder.Services.AddRadzenComponents();
+// Persist the selected light/dark theme in a cookie (shared with the hosted app).
+builder.Services.AddRadzenCookieThemeService();
 
 #if STANDALONE
 // Standalone WebAssembly publish (GitHub Pages): register our own root components.
