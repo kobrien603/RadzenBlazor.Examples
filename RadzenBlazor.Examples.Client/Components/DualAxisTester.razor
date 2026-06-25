@@ -1,0 +1,237 @@
+@using RadzenBlazor.Examples.Client.Charts
+
+@* Interactive tester for Radzen v11 dual value-axis tick alignment.
+   Edit each axis's Min/Max/Step and watch the green/red badge tell you whether
+   the two axes' tick marks (and gridlines) will line up. *@
+
+<RadzenStack Gap="1.5rem">
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenRow Gap="1.5rem">
+
+            @* ---- Left axis controls ---- *@
+            <RadzenColumn Size="12" SizeMd="4">
+                <RadzenStack Gap="0.75rem">
+                    <RadzenText TextStyle="TextStyle.H6" class="rz-mb-0">Left axis</RadzenText>
+                    @AxisInputs(() => lMin, v => lMin = v, () => lMax, v => lMax = v, () => lStep, v => lStep = v)
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                        Intervals: <strong>@FormatCount(lMin, lMax, lStep)</strong>
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary" Style="word-break: break-word;">
+                        Ticks: @FormatTicks(lMin, lMax, lStep)
+                    </RadzenText>
+                    <RadzenButton Text="Randomize left" Icon="casino" ButtonStyle="ButtonStyle.Secondary"
+                                  Variant="Variant.Flat" Size="ButtonSize.Small"
+                                  Disabled="@(!AxisAlignment.IsValid(lMin, lMax, lStep))"
+                                  Click="@RandomizeLeft" />
+                </RadzenStack>
+            </RadzenColumn>
+
+            @* ---- Right axis controls ---- *@
+            <RadzenColumn Size="12" SizeMd="4">
+                <RadzenStack Gap="0.75rem">
+                    <RadzenText TextStyle="TextStyle.H6" class="rz-mb-0">Right axis</RadzenText>
+                    @AxisInputs(() => rMin, v => rMin = v, () => rMax, v => rMax = v, () => rStep, v => rStep = v)
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                        Intervals: <strong>@FormatCount(rMin, rMax, rStep)</strong>
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary" Style="word-break: break-word;">
+                        Ticks: @FormatTicks(rMin, rMax, rStep)
+                    </RadzenText>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
+                        <RadzenButton Text="Randomize right" Icon="casino" ButtonStyle="ButtonStyle.Secondary"
+                                      Variant="Variant.Flat" Size="ButtonSize.Small"
+                                      Disabled="@(!AxisAlignment.IsValid(rMin, rMax, rStep))"
+                                      Click="@RandomizeRight" />
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="@showRightGrid" @bind-Value:after="OnChanged" Name="rightgrid" />
+                            <RadzenLabel Text="Right gridlines" Component="rightgrid" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenColumn>
+
+            @* ---- Data + alignment indicator ---- *@
+            <RadzenColumn Size="12" SizeMd="4">
+                <RadzenStack Gap="0.75rem">
+                    <RadzenText TextStyle="TextStyle.H6" class="rz-mb-0">Data &amp; result</RadzenText>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenLabel Text="Data points" Component="points" />
+                        <RadzenNumeric TValue="int" Name="points" @bind-Value="@points" @bind-Value:after="OnPointsChanged"
+                                       Min="3" Max="12" Step="1" Style="width: 6rem;" />
+                    </RadzenStack>
+                    <RadzenButton Text="Randomize both" Icon="casino"
+                                  Disabled="@(!BothValid)" Click="@RandomizeBoth" />
+
+                    <RadzenBadge BadgeStyle="@(alignment.Aligned ? BadgeStyle.Success : BadgeStyle.Danger)"
+                                 Style="font-size: 0.95rem; padding: 0.5rem 0.9rem;"
+                                 Text="@(alignment.Aligned ? "Ticks line up" : "Ticks do NOT line up")" />
+                    <RadzenText TextStyle="TextStyle.Body2">@alignment.Reason</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                        It's the <strong>interval count</strong> that must match, not the step value — e.g.
+                        left 0–400 step 100 and right 0–27000 step 6750 both have 4 intervals and line up.
+                    </RadzenText>
+                </RadzenStack>
+            </RadzenColumn>
+
+        </RadzenRow>
+    </RadzenCard>
+
+    @* ---- Chart ---- *@
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenChart @ref="chart" Style="height: 460px;">
+            <RadzenLineSeries Data="@leftData" CategoryProperty="X" ValueProperty="Y" Title="Left">
+                <RadzenMarkers Visible="true" MarkerType="MarkerType.Circle" />
+            </RadzenLineSeries>
+            <RadzenLineSeries Data="@rightData" CategoryProperty="X" ValueProperty="Y" Title="Right" ValueAxisName="right">
+                <RadzenMarkers Visible="true" MarkerType="MarkerType.Square" />
+            </RadzenLineSeries>
+
+            <RadzenCategoryAxis Padding="20" />
+
+            <RadzenValueAxis Min="@LeftAxisMin" Max="@LeftAxisMax" Step="@LeftAxisStep">
+                <RadzenGridLines Visible="true" />
+                <RadzenAxisTitle Text="Left" />
+            </RadzenValueAxis>
+
+            <RadzenValueAxis Name="right" Min="@RightAxisMin" Max="@RightAxisMax" Step="@RightAxisStep">
+                <RadzenGridLines Visible="@showRightGrid" />
+                <RadzenAxisTitle Text="Right" />
+            </RadzenValueAxis>
+
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+    </RadzenCard>
+
+</RadzenStack>
+
+@code {
+    // Defaults chosen to line up out of the box: both axes have 4 intervals.
+    private double lMin = 0, lMax = 400, lStep = 100;
+    private double rMin = 0, rMax = 27000, rStep = 6750;
+
+    private int points = 6;
+    private bool showRightGrid = true;
+    private int seed = 1;
+
+    private RadzenChart? chart;
+    private List<ChartPoint> leftData = new();
+    private List<ChartPoint> rightData = new();
+
+    private AlignmentResult alignment => AxisAlignment.IsAligned(lMin, lMax, lStep, rMin, rMax, rStep);
+    private bool BothValid => AxisAlignment.IsValid(lMin, lMax, lStep) && AxisAlignment.IsValid(rMin, rMax, rStep);
+
+    // Only feed Min/Max/Step to Radzen when they are safe; otherwise null lets the axis auto-range,
+    // so bad input never crashes or hangs the chart. Step is withheld when it would generate too many ticks.
+    private object? LeftAxisMin => AxisAlignment.IsValid(lMin, lMax, lStep) ? lMin : null;
+    private object? LeftAxisMax => AxisAlignment.IsValid(lMin, lMax, lStep) ? lMax : null;
+    private object? LeftAxisStep => AxisAlignment.IsValid(lMin, lMax, lStep) && !AxisAlignment.IsTruncated(lMin, lMax, lStep) ? lStep : null;
+
+    private object? RightAxisMin => AxisAlignment.IsValid(rMin, rMax, rStep) ? rMin : null;
+    private object? RightAxisMax => AxisAlignment.IsValid(rMin, rMax, rStep) ? rMax : null;
+    private object? RightAxisStep => AxisAlignment.IsValid(rMin, rMax, rStep) && !AxisAlignment.IsTruncated(rMin, rMax, rStep) ? rStep : null;
+
+    protected override void OnInitialized()
+    {
+        leftData = GenerateTrace(lMin, lMax, seed * 2);
+        rightData = GenerateTrace(rMin, rMax, seed * 2 + 1);
+    }
+
+    private async Task OnChanged()
+    {
+        if (chart is not null)
+            await chart.Reload();
+    }
+
+    private async Task OnPointsChanged()
+    {
+        points = Math.Clamp(points, 3, 12);
+        leftData = GenerateTrace(lMin, lMax, seed * 2);
+        rightData = GenerateTrace(rMin, rMax, seed * 2 + 1);
+        await OnChanged();
+    }
+
+    private Task RandomizeLeft()
+    {
+        seed++;
+        leftData = GenerateTrace(lMin, lMax, seed * 2);
+        return OnChanged();
+    }
+
+    private Task RandomizeRight()
+    {
+        seed++;
+        rightData = GenerateTrace(rMin, rMax, seed * 2 + 1);
+        return OnChanged();
+    }
+
+    private Task RandomizeBoth()
+    {
+        seed++;
+        leftData = GenerateTrace(lMin, lMax, seed * 2);
+        rightData = GenerateTrace(rMin, rMax, seed * 2 + 1);
+        return OnChanged();
+    }
+
+    // Whole-number values clamped within the axis's [min, max]. Deterministic per seed so server
+    // prerender and the WebAssembly re-render produce identical charts (no flicker on handoff).
+    private List<ChartPoint> GenerateTrace(double min, double max, int traceSeed)
+    {
+        var rng = new Random(traceSeed);
+        var lo = (int)Math.Ceiling(Math.Min(min, max));
+        var hi = (int)Math.Floor(Math.Max(min, max));
+        if (hi < lo) hi = lo;
+
+        return Enumerable.Range(1, points)
+            .Select(i => new ChartPoint($"P{i}", rng.Next(lo, hi + 1)))
+            .ToList();
+    }
+
+    private static string FormatCount(double min, double max, double step)
+    {
+        if (!AxisAlignment.IsValid(min, max, step))
+            return "—";
+        var count = AxisAlignment.IntervalCount(min, max, step);
+        return AxisAlignment.IsWhole(count)
+            ? ((int)Math.Round(count)).ToString()
+            : $"{count:0.###} (not a whole number)";
+    }
+
+    private static string FormatTicks(double min, double max, double step)
+    {
+        if (!AxisAlignment.IsValid(min, max, step))
+            return "—";
+        var ticks = AxisAlignment.TickValues(min, max, step);
+        var text = string.Join(", ", ticks.Select(v => v.ToString("0.####")));
+        if (AxisAlignment.IsTruncated(min, max, step))
+            text += ", …";
+        return text;
+    }
+
+    private sealed record ChartPoint(string X, double Y);
+
+    // Small templated helper to render the three numeric inputs for one axis without repetition.
+    private RenderFragment AxisInputs(
+        Func<double> getMin, Action<double> setMin,
+        Func<double> getMax, Action<double> setMax,
+        Func<double> getStep, Action<double> setStep) => __builder =>
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+            <RadzenStack Gap="0.25rem">
+                <RadzenLabel Text="Min" />
+                <RadzenNumeric TValue="double" Value="@getMin()" Step="10" Style="width: 7rem;"
+                               ValueChanged="@(async v => { setMin(v); await OnChanged(); })" />
+            </RadzenStack>
+            <RadzenStack Gap="0.25rem">
+                <RadzenLabel Text="Max" />
+                <RadzenNumeric TValue="double" Value="@getMax()" Step="10" Style="width: 7rem;"
+                               ValueChanged="@(async v => { setMax(v); await OnChanged(); })" />
+            </RadzenStack>
+            <RadzenStack Gap="0.25rem">
+                <RadzenLabel Text="Step" />
+                <RadzenNumeric TValue="double" Value="@getStep()" Step="1" Style="width: 7rem;"
+                               ValueChanged="@(async v => { setStep(v); await OnChanged(); })" />
+            </RadzenStack>
+        </RadzenStack>
+    };
+}
