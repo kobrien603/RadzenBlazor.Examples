@@ -1,0 +1,60 @@
+@page "/spreadsheet"
+
+<PageTitle>Spreadsheet - Radzen Blazor Examples</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Gap="0.25rem">
+        <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Spreadsheet</RadzenText>
+        <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-color-secondary">
+            <code>RadzenSpreadsheet</code> — edit cells, type formulas, import/export <code>.xlsx</code> &amp; <code>.csv</code>.
+        </RadzenText>
+    </RadzenStack>
+
+    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" Icon="functions">
+        Try editing <strong>B2:B4</strong> — the <code>=SUM</code> total in <strong>B5</strong> and the
+        <code>=B5*C1</code> projection recalculate instantly. The formula engine, import and export all run
+        in the browser when this page is in WebAssembly mode.
+    </RadzenAlert>
+
+    <RadzenCard Variant="Variant.Outlined" class="rz-p-0" Style="overflow: hidden;">
+        @if (RendererInfo.IsInteractive)
+        {
+            <RadzenSpreadsheet @ref="spreadsheet" Workbook="@workbook" ExportFileName="radzen-demo"
+                               ShowToolbar="true" ShowFormulaBar="true" ShowSheetTabs="true"
+                               Style="height: 600px;" />
+        }
+        else
+        {
+            <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 600px;">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">Loading spreadsheet…</RadzenText>
+            </RadzenStack>
+        }
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private RadzenSpreadsheet? spreadsheet;
+    private Workbook workbook = new();
+
+    protected override void OnInitialized()
+    {
+        var sheet = workbook.AddSheet("Budget", 50, 12);
+
+        sheet.Cells["A1"].Value = "Tax rate";
+        sheet.Cells["C1"].Value = 1.08;
+
+        sheet.Cells["A2"].Value = "Hardware";
+        sheet.Cells["B2"].Value = 1200;
+        sheet.Cells["A3"].Value = "Software";
+        sheet.Cells["B3"].Value = 850;
+        sheet.Cells["A4"].Value = "Services";
+        sheet.Cells["B4"].Value = 2300;
+
+        sheet.Cells["A5"].Value = "Subtotal";
+        sheet.Cells["B5"].Formula = "=SUM(B2:B4)";
+
+        sheet.Cells["A6"].Value = "With tax";
+        sheet.Cells["B6"].Formula = "=B5*C1";
+    }
+}

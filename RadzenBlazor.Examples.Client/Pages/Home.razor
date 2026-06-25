@@ -1,0 +1,70 @@
+@page "/"
+
+<PageTitle>Radzen Blazor Examples</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap">
+        <RadzenStack Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="rz-mb-0">Radzen Blazor Examples</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-color-secondary">
+                A .NET 10 Blazor Web App for trying out Radzen Blazor components.
+            </RadzenText>
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenIcon Icon="@(RendererInfo.IsInteractive ? "bolt" : "hourglass_empty")" />
+            <RadzenBadge Text="@($"Render mode: {RendererInfo.Name}")"
+                         BadgeStyle="@(RendererInfo.IsInteractive ? BadgeStyle.Success : BadgeStyle.Light)" />
+        </RadzenStack>
+    </RadzenStack>
+
+    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" Icon="info">
+        This page renders as <strong>Static</strong> first, then the badge above flips to
+        <strong>Server</strong> and finally <strong>WebAssembly</strong> once the InteractiveAuto
+        runtime takes over — proof the same components work across all render modes.
+    </RadzenAlert>
+
+    <RadzenRow Gap="1.5rem">
+        <RadzenColumn Size="12" SizeMd="6">
+            <RadzenCard Variant="Variant.Outlined" Style="height: 100%;">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                        <RadzenIcon Icon="insert_chart" Style="font-size: 2rem; color: var(--rz-primary);" />
+                        <RadzenText TextStyle="TextStyle.H5" class="rz-mb-0">Charts</RadzenText>
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.Body1">
+                        Interactive <code>RadzenChart</code> demos — line, area, column, bar, pie and
+                        donut series with live controls to switch series type and data.
+                    </RadzenText>
+                    <RadzenButton Text="Open charts" Icon="arrow_forward" Click="@(() => Nav.NavigateTo("charts"))" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMd="6">
+            <RadzenCard Variant="Variant.Outlined" Style="height: 100%;">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                        <RadzenIcon Icon="table_view" Style="font-size: 2rem; color: var(--rz-primary);" />
+                        <RadzenText TextStyle="TextStyle.H5" class="rz-mb-0">Spreadsheet</RadzenText>
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.Body1">
+                        The new <code>RadzenSpreadsheet</code> — an Excel-compatible grid with a formula
+                        engine and <code>.xlsx</code> / <code>.csv</code> import &amp; export, all in the browser.
+                    </RadzenText>
+                    <RadzenButton Text="Open spreadsheet" Icon="arrow_forward" Click="@(() => Nav.NavigateTo("spreadsheet"))" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+        Built with Radzen.Blazor @RadzenVersion &middot;
+        <RadzenLink Path="https://blazor.radzen.com" Target="_blank" Text="blazor.radzen.com" />
+    </RadzenText>
+</RadzenStack>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private static string RadzenVersion =>
+        typeof(Radzen.Colors).Assembly.GetName().Version?.ToString(3) ?? "11.0.4";
+}

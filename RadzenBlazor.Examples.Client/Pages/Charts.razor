@@ -1,0 +1,132 @@
+@page "/charts"
+
+<PageTitle>Charts - Radzen Blazor Examples</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Gap="0.25rem">
+        <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Charts</RadzenText>
+        <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-color-secondary">
+            <code>RadzenChart</code> with switchable series types and live data.
+        </RadzenText>
+    </RadzenStack>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem">
+            <RadzenSelectBar @bind-Value="@chartType" TValue="ChartType" Size="ButtonSize.Small">
+                <Items>
+                    <RadzenSelectBarItem Text="Line" Value="ChartType.Line" Icon="show_chart" />
+                    <RadzenSelectBarItem Text="Area" Value="ChartType.Area" Icon="area_chart" />
+                    <RadzenSelectBarItem Text="Column" Value="ChartType.Column" Icon="bar_chart" />
+                    <RadzenSelectBarItem Text="Bar" Value="ChartType.Bar" Icon="align_horizontal_left" />
+                    <RadzenSelectBarItem Text="Pie" Value="ChartType.Pie" Icon="pie_chart" />
+                    <RadzenSelectBarItem Text="Donut" Value="ChartType.Donut" Icon="donut_large" />
+                </Items>
+            </RadzenSelectBar>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1.5rem" Wrap="FlexWrap.Wrap">
+                @if (chartType is ChartType.Line or ChartType.Area)
+                {
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenSwitch @bind-Value="@smooth" Name="smooth" />
+                        <RadzenLabel Text="Smooth" Component="smooth" />
+                    </RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenSwitch @bind-Value="@markers" Name="markers" />
+                        <RadzenLabel Text="Markers" Component="markers" />
+                    </RadzenStack>
+                }
+                <RadzenButton Text="Randomize data" Icon="casino" ButtonStyle="ButtonStyle.Secondary"
+                              Variant="Variant.Flat" Size="ButtonSize.Small" Click="@Randomize" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenChart Style="height: 420px;">
+            @switch (chartType)
+            {
+                case ChartType.Line:
+                    <RadzenLineSeries Data="@data" CategoryProperty="Month" ValueProperty="Revenue" Title="Revenue" Smooth="@smooth">
+                        <RadzenMarkers Visible="@markers" MarkerType="MarkerType.Circle" />
+                    </RadzenLineSeries>
+                    <RadzenLineSeries Data="@data" CategoryProperty="Month" ValueProperty="Orders" Title="Orders" Smooth="@smooth">
+                        <RadzenMarkers Visible="@markers" MarkerType="MarkerType.Square" />
+                    </RadzenLineSeries>
+                    <RadzenCategoryAxis Padding="20" />
+                    <RadzenValueAxis>
+                        <RadzenGridLines Visible="true" />
+                    </RadzenValueAxis>
+                    break;
+                case ChartType.Area:
+                    <RadzenAreaSeries Data="@data" CategoryProperty="Month" ValueProperty="Revenue" Title="Revenue" Smooth="@smooth">
+                        <RadzenMarkers Visible="@markers" MarkerType="MarkerType.Circle" />
+                    </RadzenAreaSeries>
+                    <RadzenAreaSeries Data="@data" CategoryProperty="Month" ValueProperty="Orders" Title="Orders" Smooth="@smooth">
+                        <RadzenMarkers Visible="@markers" MarkerType="MarkerType.Square" />
+                    </RadzenAreaSeries>
+                    <RadzenCategoryAxis Padding="20" />
+                    <RadzenValueAxis>
+                        <RadzenGridLines Visible="true" />
+                    </RadzenValueAxis>
+                    break;
+                case ChartType.Column:
+                    <RadzenColumnSeries Data="@data" CategoryProperty="Month" ValueProperty="Revenue" Title="Revenue" />
+                    <RadzenColumnSeries Data="@data" CategoryProperty="Month" ValueProperty="Orders" Title="Orders" />
+                    <RadzenCategoryAxis Padding="20" />
+                    <RadzenValueAxis>
+                        <RadzenGridLines Visible="true" />
+                    </RadzenValueAxis>
+                    break;
+                case ChartType.Bar:
+                    <RadzenBarSeries Data="@data" CategoryProperty="Month" ValueProperty="Revenue" Title="Revenue" />
+                    <RadzenBarSeries Data="@data" CategoryProperty="Month" ValueProperty="Orders" Title="Orders" />
+                    <RadzenCategoryAxis Padding="20" />
+                    <RadzenValueAxis>
+                        <RadzenGridLines Visible="true" />
+                    </RadzenValueAxis>
+                    break;
+                case ChartType.Pie:
+                    <RadzenPieSeries Data="@data" CategoryProperty="Month" ValueProperty="Revenue" Title="Revenue" />
+                    break;
+                case ChartType.Donut:
+                    <RadzenDonutSeries Data="@data" CategoryProperty="Month" ValueProperty="Revenue" Title="Revenue" />
+                    break;
+            }
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private enum ChartType { Line, Area, Column, Bar, Pie, Donut }
+
+    private ChartType chartType = ChartType.Line;
+    private bool smooth = true;
+    private bool markers = true;
+
+    private record DataItem(string Month, double Revenue, int Orders);
+
+    private static readonly string[] Months =
+        { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug" };
+
+    private List<DataItem> data = new();
+
+    // Seeded so server prerender and the WASM re-render produce identical output (no flicker).
+    private int seed = 1;
+
+    protected override void OnInitialized() => Generate();
+
+    private void Randomize()
+    {
+        seed++;
+        Generate();
+    }
+
+    private void Generate()
+    {
+        var rng = new Random(seed);
+        data = Months
+            .Select(m => new DataItem(m, rng.Next(20, 100) * 1000, rng.Next(50, 400)))
+            .ToList();
+    }
+}

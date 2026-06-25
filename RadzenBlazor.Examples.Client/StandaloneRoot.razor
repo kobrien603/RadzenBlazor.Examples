@@ -1,0 +1,16 @@
+@* Root component used ONLY when the Client is published as a standalone WebAssembly app
+   (for static hosting on GitHub Pages). In the hosted InteractiveAuto app the server
+   provides the root component instead — see RadzenBlazor.Examples/Components/Routes.razor. *@
+
+<Router AppAssembly="@typeof(StandaloneRoot).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(Layout.MainLayout)">
+            <RadzenText TextStyle="TextStyle.H4">Page not found</RadzenText>
+            <RadzenLink Path="" Text="Back to home" />
+        </LayoutView>
+    </NotFound>
+</Router>

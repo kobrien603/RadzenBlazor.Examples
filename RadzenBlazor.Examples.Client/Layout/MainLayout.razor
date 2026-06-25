@@ -1,0 +1,30 @@
+@inherits LayoutComponentBase
+
+<RadzenComponents />
+
+<RadzenLayout style="grid-template-areas: 'rz-header rz-header' 'rz-sidebar rz-body';">
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+            <RadzenLabel Text="Radzen Blazor Examples" class="rz-ml-2" Style="font-size: 1.1rem; font-weight: 600;" />
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar @bind-Expanded="@sidebarExpanded">
+        <NavMenu />
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+</RadzenLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool sidebarExpanded = true;
+}
