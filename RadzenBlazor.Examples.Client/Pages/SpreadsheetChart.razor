@@ -1,0 +1,118 @@
+@page "/spreadsheet-chart"
+
+<PageTitle>Spreadsheet chart - Radzen Blazor Examples</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Gap="0.25rem">
+        <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Spreadsheet chart</RadzenText>
+        <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-color-secondary">
+            The two-trace data lives in the sheet (columns <strong>Left</strong> and <strong>Right</strong>) and a
+            native <code>RadzenSpreadsheet</code> chart plots it — edit a cell and the chart updates in place.
+        </RadzenText>
+    </RadzenStack>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem">
+            <RadzenSelectBar @bind-Value="@chartType" @bind-Value:after="Rebuild" TValue="SpreadsheetChartType" Size="ButtonSize.Small">
+                <Items>
+                    <RadzenSelectBarItem Text="Line" Value="SpreadsheetChartType.Line" Icon="show_chart" />
+                    <RadzenSelectBarItem Text="Column" Value="SpreadsheetChartType.Column" Icon="bar_chart" />
+                    <RadzenSelectBarItem Text="Bar" Value="SpreadsheetChartType.Bar" Icon="align_horizontal_left" />
+                    <RadzenSelectBarItem Text="Area" Value="SpreadsheetChartType.Area" Icon="area_chart" />
+                </Items>
+            </RadzenSelectBar>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1.5rem" Wrap="FlexWrap.Wrap">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenLabel Text="Data points" Component="points" />
+                    <RadzenNumeric TValue="int" Name="points" @bind-Value="@points" @bind-Value:after="Rebuild"
+                                   Min="3" Max="12" Step="1" Style="width: 6rem;" />
+                </RadzenStack>
+                <RadzenButton Text="Randomize data" Icon="casino" ButtonStyle="ButtonStyle.Secondary"
+                              Variant="Variant.Flat" Size="ButtonSize.Small" Click="@Randomize" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Outlined" class="rz-p-0" Style="overflow: hidden;">
+        @if (RendererInfo.IsInteractive)
+        {
+            <RadzenSpreadsheet @key="workbookVersion" Workbook="@workbook" ExportFileName="trace-chart"
+                               AllowCharts="true" ShowToolbar="true" ShowFormulaBar="true" ShowSheetTabs="true"
+                               Style="height: 620px;" />
+        }
+        else
+        {
+            <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 620px;">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">Loading spreadsheet…</RadzenText>
+            </RadzenStack>
+        }
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private int points = 6;
+    private int seed = 1;
+    private int workbookVersion;
+    private SpreadsheetChartType chartType = SpreadsheetChartType.Line;
+    private Workbook workbook = new();
+
+    protected override void OnInitialized() => workbook = BuildWorkbook();
+
+    private void Randomize()
+    {
+        seed++;
+        Rebuild();
+    }
+
+    // Reassign the workbook and bump the @key so the spreadsheet reloads with the new model.
+    private void Rebuild()
+    {
+        points = Math.Clamp(points, 3, 12);
+        workbookVersion++;
+        workbook = BuildWorkbook();
+    }
+
+    private Workbook BuildWorkbook()
+    {
+        var wb = new Workbook();
+        var rowCount = Math.Max(points + 2, 20);
+        var sheet = wb.AddSheet("Traces", rowCount, 16);
+
+        sheet.Cells["A1"].Value = "Point";
+        sheet.Cells["B1"].Value = "Left";
+        sheet.Cells["C1"].Value = "Right";
+
+        // Deterministic per seed so server prerender and the WASM re-render match (no flicker).
+        var rng = new Random(seed);
+        for (var i = 0; i < points; i++)
+        {
+            var row = i + 2;
+            sheet.Cells[$"A{row}"].Value = $"P{i + 1}";
+            sheet.Cells[$"B{row}"].Value = (double)rng.Next(100, 501);
+            sheet.Cells[$"C{row}"].Value = (double)rng.Next(200, 901);
+        }
+
+        var lastRow = points + 1;
+        var chart = new SheetChart
+        {
+            Name = "TracesChart",
+            Title = "Left vs Right",
+            ChartType = chartType,
+            ShowLegend = true,
+            LegendPosition = ChartLegendPosition.Bottom,
+            AnchorMode = DrawingAnchorMode.TwoCellAnchor,
+            From = new CellAnchor { Column = 4, Row = 1 },                 // anchored at E2
+            To = new CellAnchor { Column = 13, Row = Math.Max(17, points + 3) },
+            Series = new List<ChartSeries>
+            {
+                new() { Name = "Left",  Categories = $"Traces!$A$2:$A${lastRow}", Values = $"Traces!$B$2:$B${lastRow}" },
+                new() { Name = "Right", Categories = $"Traces!$A$2:$A${lastRow}", Values = $"Traces!$C$2:$C${lastRow}" },
+            }
+        };
+        sheet.AddChart(chart);
+
+        return wb;
+    }
+}
