@@ -98,30 +98,13 @@
         </RadzenRow>
     </RadzenCard>
 
-    @* ---- Chart ---- *@
+    @* ---- Chart (reusable dual-axis component) ---- *@
     <RadzenCard Variant="Variant.Outlined">
-        <RadzenChart @ref="chart" Style="height: 460px;">
-            <RadzenLineSeries Data="@leftData" CategoryProperty="X" ValueProperty="Y" Title="Left">
-                <RadzenMarkers Visible="true" MarkerType="MarkerType.Circle" />
-            </RadzenLineSeries>
-            <RadzenLineSeries Data="@rightData" CategoryProperty="X" ValueProperty="Y" Title="Right" ValueAxisName="right">
-                <RadzenMarkers Visible="true" MarkerType="MarkerType.Square" />
-            </RadzenLineSeries>
-
-            <RadzenCategoryAxis Padding="20" />
-
-            <RadzenValueAxis Min="@LeftAxisMin" Max="@LeftAxisMax" Step="@LeftAxisStep">
-                <RadzenGridLines Visible="true" />
-                <RadzenAxisTitle Text="Left" />
-            </RadzenValueAxis>
-
-            <RadzenValueAxis Name="right" Min="@RightAxisMin" Max="@RightAxisMax" Step="@RightAxisStep">
-                <RadzenGridLines Visible="@showRightGrid" />
-                <RadzenAxisTitle Text="Right" />
-            </RadzenValueAxis>
-
-            <RadzenLegend Position="LegendPosition.Bottom" />
-        </RadzenChart>
+        <DualAxisChart @ref="chartCmp"
+                       LeftData="@leftData" RightData="@rightData"
+                       LeftMin="@LeftAxisMin" LeftMax="@LeftAxisMax" LeftStep="@LeftAxisStep"
+                       RightMin="@RightAxisMin" RightMax="@RightAxisMax" RightStep="@RightAxisStep"
+                       ShowRightGrid="@showRightGrid" />
     </RadzenCard>
 
 </RadzenStack>
@@ -141,9 +124,9 @@
     private bool autoStep = false;
     private int targetIntervals = 4;
 
-    private RadzenChart? chart;
-    private List<ChartPoint> leftData = new();
-    private List<ChartPoint> rightData = new();
+    private DualAxisChart? chartCmp;
+    private List<DualAxisChart.AxisPoint> leftData = new();
+    private List<DualAxisChart.AxisPoint> rightData = new();
 
     private AlignmentResult alignment => AxisAlignment.IsAligned(lMin, lMax, lStep, rMin, rMax, rStep);
     private bool BothValid => AxisAlignment.IsValid(lMin, lMax, lStep) && AxisAlignment.IsValid(rMin, rMax, rStep);
@@ -168,8 +151,8 @@
     private async Task OnChanged()
     {
         RecomputeAutoSteps();
-        if (chart is not null)
-            await chart.Reload();
+        if (chartCmp is not null)
+            await chartCmp.ReloadAsync();
     }
 
     // When auto-step is on, force each step to the value that yields exactly `targetIntervals`
@@ -221,7 +204,7 @@
 
     // Whole-number values clamped within the axis's [min, max]. Deterministic per seed so server
     // prerender and the WebAssembly re-render produce identical charts (no flicker on handoff).
-    private List<ChartPoint> GenerateTrace(double min, double max, int traceSeed)
+    private List<DualAxisChart.AxisPoint> GenerateTrace(double min, double max, int traceSeed)
     {
         var rng = new Random(traceSeed);
         var lo = (int)Math.Ceiling(Math.Min(min, max));
@@ -229,7 +212,7 @@
         if (hi < lo) hi = lo;
 
         return Enumerable.Range(1, points)
-            .Select(i => new ChartPoint($"P{i}", rng.Next(lo, hi + 1)))
+            .Select(i => new DualAxisChart.AxisPoint($"P{i}", rng.Next(lo, hi + 1)))
             .ToList();
     }
 
@@ -253,8 +236,6 @@
             text += ", …";
         return text;
     }
-
-    private sealed record ChartPoint(string X, double Y);
 
     // Small templated helper to render the three numeric inputs for one axis without repetition.
     private RenderFragment AxisInputs(

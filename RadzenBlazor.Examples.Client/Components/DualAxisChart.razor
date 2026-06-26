@@ -1,0 +1,55 @@
+@* Reusable two value-axis line chart (Radzen v11 multi-axis): a left (unnamed/primary)
+   axis and a right (named) axis, each with its own independent scale. Pass null for any
+   Min/Max/Step to let that axis auto-range. Used by the dual-axis tester and the
+   spreadsheet-driven chart page. *@
+
+<RadzenChart @ref="chart" Style="@($"height: {Height};")">
+    <RadzenLineSeries Data="@LeftData" CategoryProperty="X" ValueProperty="Y" Title="@LeftTitle">
+        <RadzenMarkers Visible="true" MarkerType="MarkerType.Circle" />
+    </RadzenLineSeries>
+    <RadzenLineSeries Data="@RightData" CategoryProperty="X" ValueProperty="Y" Title="@RightTitle" ValueAxisName="right">
+        <RadzenMarkers Visible="true" MarkerType="MarkerType.Square" />
+    </RadzenLineSeries>
+
+    <RadzenCategoryAxis Padding="20" />
+
+    <RadzenValueAxis Min="@LeftMin" Max="@LeftMax" Step="@LeftStep">
+        <RadzenGridLines Visible="@ShowLeftGrid" />
+        <RadzenAxisTitle Text="@LeftTitle" />
+    </RadzenValueAxis>
+
+    <RadzenValueAxis Name="right" Min="@RightMin" Max="@RightMax" Step="@RightStep">
+        <RadzenGridLines Visible="@ShowRightGrid" />
+        <RadzenAxisTitle Text="@RightTitle" />
+    </RadzenValueAxis>
+
+    <RadzenLegend Position="LegendPosition.Bottom" />
+</RadzenChart>
+
+@code {
+    /// <summary>A single category/value point. Reference type so Radzen's reflection-based binding is happy.</summary>
+    public record AxisPoint(string X, double Y);
+
+    [Parameter] public IEnumerable<AxisPoint> LeftData { get; set; } = Array.Empty<AxisPoint>();
+    [Parameter] public IEnumerable<AxisPoint> RightData { get; set; } = Array.Empty<AxisPoint>();
+
+    [Parameter] public string LeftTitle { get; set; } = "Left";
+    [Parameter] public string RightTitle { get; set; } = "Right";
+
+    // null => the axis auto-ranges to its data.
+    [Parameter] public object? LeftMin { get; set; }
+    [Parameter] public object? LeftMax { get; set; }
+    [Parameter] public object? LeftStep { get; set; }
+    [Parameter] public object? RightMin { get; set; }
+    [Parameter] public object? RightMax { get; set; }
+    [Parameter] public object? RightStep { get; set; }
+
+    [Parameter] public bool ShowLeftGrid { get; set; } = true;
+    [Parameter] public bool ShowRightGrid { get; set; } = true;
+    [Parameter] public string Height { get; set; } = "460px";
+
+    private RadzenChart? chart;
+
+    /// <summary>Force the underlying chart to redraw (e.g. after axis settings change without new data).</summary>
+    public Task ReloadAsync() => chart?.Reload() ?? Task.CompletedTask;
+}
