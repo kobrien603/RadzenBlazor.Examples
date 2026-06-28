@@ -9,9 +9,11 @@ components — focused on the **Charts** and the newly released **`RadzenSpreads
 
 | Page | Component | Highlights |
 |------|-----------|------------|
-| **Home** (`/`) | — | Live badge showing the current render mode (Static → Server → WebAssembly) |
+| **Home** (`/`) | — | Live badge showing the current render mode (Static → Server → WebAssembly), plus cards linking to every demo |
 | **Charts** (`/charts`) | `RadzenChart` | Switch between line / area / column / bar / pie / donut, toggle smooth & markers, randomize data |
 | **Spreadsheet** (`/spreadsheet`) | `RadzenSpreadsheet` | Excel-compatible grid with a live formula engine (`=SUM`, `=B5*C1`) and `.xlsx` / `.csv` import & export |
+| **Spreadsheet chart** (`/spreadsheet-chart`) | `RadzenSpreadsheet` + `SheetChart` | A native **in-sheet** chart plotting two trace columns; updates as you edit. Switch chart type / point count. Single shared value axis (model limitation) |
+| **Spreadsheet-driven chart** (`/spreadsheet-live-chart`) | `RadzenSpreadsheet` → `RadzenChart` | The sheet holds the data; an **external** dual-axis chart reads the cells and redraws live — so the right trace gets its own axis and scale |
 | **Dual-axis tester** (`/dual-axis-tester`) | `RadzenChart` (v11 multi-axis) | Two value axes (left + right); a green/red badge tells you whether their ticks line up, with auto-set steps or manual + "what it should be" hints |
 
 A header **light/dark toggle** (`RadzenAppearanceToggle`) switches between Material and Material
@@ -42,8 +44,10 @@ on first paint.
 ```
 RadzenBlazor.Examples/          # Server host project (InteractiveAuto)
 RadzenBlazor.Examples.Client/   # WebAssembly project — all demo pages, layout and nav live here
-  Pages/                        # Home, Charts, Spreadsheet, DualAxisTesterPage
-  Components/                   # DualAxisTester (reusable dual-axis chart + controls)
+  Pages/                        # Home, Charts, Spreadsheet, SpreadsheetChart,
+                                #   SpreadsheetLiveChart, DualAxisTesterPage
+  Components/                   # DualAxisChart (reusable two value-axis chart),
+                                #   DualAxisTester (alignment controls, uses DualAxisChart)
   Charts/AxisAlignment.cs       # Pure, testable tick-alignment math
   Layout/                       # MainLayout (header theme toggle) + NavMenu
   StandaloneRoot.razor          # Root used only for the standalone WASM (GitHub Pages) build
