@@ -56,6 +56,27 @@ public static class AxisAlignment
     public static bool IsTruncated(double min, double max, double step)
         => IsValid(min, max, step) && Math.Floor(IntervalCount(min, max, step) + Tolerance) > MaxTicks;
 
+    /// <summary>True when any rendered tick value is not a whole number.</summary>
+    public static bool HasDecimalTicks(double min, double max, double step)
+        => IsValid(min, max, step) && TickValues(min, max, step).Any(v => !IsWhole(v));
+
+    /// <summary>
+    /// Nudge an axis to whole-number ticks without hiding any: keep the interval count,
+    /// floor Min, round Step up to a whole number, and grow Max to preserve the tick count.
+    /// Returns <c>null</c> for invalid input.
+    /// </summary>
+    public static (double Min, double Max, double Step)? SnapToWholeTicks(double min, double max, double step)
+    {
+        if (!IsValid(min, max, step))
+            return null;
+
+        var n = (int)Math.Max(1, Math.Round(IntervalCount(min, max, step)));
+        var newMin = Math.Floor(min);
+        var newStep = Math.Max(1, Math.Ceiling((max - newMin) / n));
+        var newMax = newMin + n * newStep;
+        return (newMin, newMax, newStep);
+    }
+
     /// <summary>
     /// Evaluates whether the two axes' ticks line up and explains why / why not.
     /// </summary>
