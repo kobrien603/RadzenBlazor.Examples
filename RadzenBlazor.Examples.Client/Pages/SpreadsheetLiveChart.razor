@@ -1,5 +1,4 @@
 @page "/spreadsheet-live-chart"
-@implements IDisposable
 
 <PageTitle>Spreadsheet-driven chart - Radzen Blazor Examples</PageTitle>
 
@@ -16,7 +15,7 @@
     <RadzenCard Variant="Variant.Outlined">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem">
             <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
-                Edit the <strong>Left</strong> (B) or <strong>Right</strong> (C) columns — the chart below updates within a moment.
+                Edit the <strong>Left</strong> (B) or <strong>Right</strong> (C) columns — the chart updates when you leave an edited cell or add a row.
             </RadzenText>
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1.5rem" Wrap="FlexWrap.Wrap">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
@@ -33,7 +32,8 @@
     <RadzenCard Variant="Variant.Outlined" class="rz-p-0" Style="overflow: hidden;">
         @if (RendererInfo.IsInteractive)
         {
-            <RadzenSpreadsheet @key="workbookVersion" Workbook="@workbook" ExportFileName="trace-data"
+            <RadzenSpreadsheet @key="workbookVersion" Workbook="@workbook" WorkbookChanged="@OnWorkbookChanged"
+                               ExportFileName="trace-data"
                                ShowToolbar="true" ShowFormulaBar="true" ShowSheetTabs="true"
                                Style="height: 360px;" />
         }
@@ -63,7 +63,9 @@
     private List<DualAxisChart.AxisPoint> rightPoints = new();
 
     private DualAxisChart? chartCmp;
-    private PeriodicTimer? timer;
+
+    // Safety cap so a stray far-down cell can't make the read scan run away.
+    private const int MaxDataRows = 200;
 
     protected override void OnInitialized()
     {
@@ -71,36 +73,18 @@
         ReadFromSheet(force: true);
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    // Fired when the spreadsheet commits an edit (cell blur/Enter) or a row is inserted/deleted.
+    // The signature guard inside ReadFromSheet makes this a no-op when nothing actually changed,
+    // so re-rendering with the component's own workbook can't cause a refresh loop.
+    private async Task OnWorkbookChanged(Workbook wb)
     {
-        if (firstRender && RendererInfo.IsInteractive)
+        workbook = wb;
+        if (ReadFromSheet(force: false))
         {
-            // Poll the sheet for edits and push changes to the chart. Cheap (a few cells) and only
-            // re-renders when the data actually changed, so an idle sheet costs nothing visible.
-            timer = new PeriodicTimer(TimeSpan.FromMilliseconds(350));
-            _ = PollAsync();
+            StateHasChanged();
+            if (chartCmp is not null)
+                await chartCmp.ReloadAsync();
         }
-    }
-
-    private async Task PollAsync()
-    {
-        try
-        {
-            while (timer is not null && await timer.WaitForNextTickAsync())
-            {
-                await InvokeAsync(async () =>
-                {
-                    if (ReadFromSheet(force: false))
-                    {
-                        StateHasChanged();
-                        if (chartCmp is not null)
-                            await chartCmp.ReloadAsync();
-                    }
-                });
-            }
-        }
-        catch (OperationCanceledException) { }
-        catch (ObjectDisposedException) { }
     }
 
     private void Randomize()
@@ -149,16 +133,24 @@
         if (sheet is null)
             return false;
 
-        var left = new List<DualAxisChart.AxisPoint>(points);
-        var right = new List<DualAxisChart.AxisPoint>(points);
-        var parts = new List<string>(points);
+        var left = new List<DualAxisChart.AxisPoint>();
+        var right = new List<DualAxisChart.AxisPoint>();
+        var parts = new List<string>();
 
-        for (var i = 0; i < points; i++)
+        // Scan every data row (not a fixed count) so rows added via the sheet show up and
+        // deleted rows drop off. A fully-empty row (A, B and C blank) marks the end of the data.
+        // Cap at the sheet's allocated RowCount — Cells[$"A{row}"] throws past the last row.
+        var lastRow = Math.Min(MaxDataRows + 1, sheet.RowCount);
+        for (var row = 2; row <= lastRow; row++)
         {
-            var row = i + 2;
-            var category = sheet.Cells[$"A{row}"].GetValue();
-            if (string.IsNullOrEmpty(category))
-                category = $"P{i + 1}";
+            var categoryRaw = sheet.Cells[$"A{row}"].GetValue();
+            var bRaw = sheet.Cells[$"B{row}"].GetValue();
+            var cRaw = sheet.Cells[$"C{row}"].GetValue();
+
+            if (string.IsNullOrEmpty(categoryRaw) && string.IsNullOrEmpty(bRaw) && string.IsNullOrEmpty(cRaw))
+                break;
+
+            var category = string.IsNullOrEmpty(categoryRaw) ? $"P{row - 1}" : categoryRaw;
             var l = ReadNumber(sheet.Cells[$"B{row}"]);
             var r = ReadNumber(sheet.Cells[$"C{row}"]);
 
@@ -186,6 +178,4 @@
         }
         return double.TryParse(cell.GetValue(), out var value) ? value : 0;
     }
-
-    public void Dispose() => timer?.Dispose();
 }
