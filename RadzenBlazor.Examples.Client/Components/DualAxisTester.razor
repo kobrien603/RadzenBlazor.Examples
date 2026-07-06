@@ -17,9 +17,11 @@
                     <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
                         Intervals: <strong>@FormatCount(lMin, lMax, lStep)</strong>
                     </RadzenText>
-                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary" Style="word-break: break-word;">
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary"
+                                Style="@TicksCaptionStyle(lMin, lMax, lStep)">
                         Ticks: @FormatTicks(lMin, lMax, lStep)
                     </RadzenText>
+                    @WholeTickWarning(() => lMin, v => lMin = v, () => lMax, v => lMax = v, () => lStep, v => lStep = v)
                     <RadzenButton Text="Randomize left" Icon="casino" ButtonStyle="ButtonStyle.Secondary"
                                   Variant="Variant.Flat" Size="ButtonSize.Small"
                                   Disabled="@(!AxisAlignment.IsValid(lMin, lMax, lStep))"
@@ -35,9 +37,11 @@
                     <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
                         Intervals: <strong>@FormatCount(rMin, rMax, rStep)</strong>
                     </RadzenText>
-                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary" Style="word-break: break-word;">
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary"
+                                Style="@TicksCaptionStyle(rMin, rMax, rStep)">
                         Ticks: @FormatTicks(rMin, rMax, rStep)
                     </RadzenText>
+                    @WholeTickWarning(() => rMin, v => rMin = v, () => rMax, v => rMax = v, () => rStep, v => rStep = v)
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
                         <RadzenButton Text="Randomize right" Icon="casino" ButtonStyle="ButtonStyle.Secondary"
                                       Variant="Variant.Flat" Size="ButtonSize.Small"
@@ -237,6 +241,28 @@
         return text;
     }
 
+    // Reddens the "Ticks:" caption when the axis renders any fractional tick label.
+    private static string TicksCaptionStyle(double min, double max, double step)
+        => AxisAlignment.HasDecimalTicks(min, max, step)
+            ? "word-break: break-word; color: var(--rz-danger);"
+            : "word-break: break-word;";
+
+    // Apply the whole-number snap to an axis, then reload the chart. No-op on invalid input.
+    private Task SnapWhole(
+        Func<double> getMin, Action<double> setMin,
+        Func<double> getMax, Action<double> setMax,
+        Func<double> getStep, Action<double> setStep)
+    {
+        if (AxisAlignment.SnapToWholeTicks(getMin(), getMax(), getStep()) is { } r)
+        {
+            setMin(r.Min);
+            setMax(r.Max);
+            setStep(r.Step);
+            return OnChanged();
+        }
+        return Task.CompletedTask;
+    }
+
     // Small templated helper to render the three numeric inputs for one axis without repetition.
     private RenderFragment AxisInputs(
         Func<double> getMin, Action<double> setMin,
@@ -285,5 +311,23 @@
                 </RadzenStack>
             }
         </RadzenStack>
+    };
+
+    // Per-axis red indicator + one-click fix, shown only when the axis has fractional ticks.
+    // "Auto (whole)" snaps to whole-number ticks while keeping the interval count (see SnapToWholeTicks).
+    private RenderFragment WholeTickWarning(
+        Func<double> getMin, Action<double> setMin,
+        Func<double> getMax, Action<double> setMax,
+        Func<double> getStep, Action<double> setStep) => __builder =>
+    {
+        @if (AxisAlignment.HasDecimalTicks(getMin(), getMax(), getStep()))
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Decimal ticks" />
+                <RadzenButton Text="Auto (whole)" Icon="auto_fix_high" ButtonStyle="ButtonStyle.Warning"
+                              Variant="Variant.Flat" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => SnapWhole(getMin, setMin, getMax, setMax, getStep, setStep))" />
+            </RadzenStack>
+        }
     };
 }
